@@ -1,8 +1,57 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
+import { ResponseInterceptor } from './interceptor/response.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  await app.listen(process.env.PORT ?? 3000);
+    const app = await NestFactory.create(AppModule);
+    app.useGlobalPipes(
+        new ValidationPipe({
+            transform: true,
+            transformOptions: {
+                exposeDefaultValues: true,
+            },
+        })
+    );
+    app.use(cookieParser());
+    app.enableCors({
+        origin: [process.env.FRONTEND_URL || 'http://localhost:3001'],
+        credentials: true,
+    });
+
+    // response interceptor
+    app.useGlobalInterceptors(new ResponseInterceptor(app.get(Reflector)));
+
+    // for swagger
+    const config = new DocumentBuilder()
+        .setTitle('IEEE Backend API')
+        .setDescription(
+            'IEEE Documentation presented by backend team with lots of kisses for you 😘'
+        )
+        .setVersion('1.0')
+        .addBearerAuth(
+            {
+                type: 'http',
+                scheme: 'bearer',
+                bearerFormat: 'JWT',
+                name: 'JWT',
+                description: 'Enter JWT token',
+                in: 'header',
+            },
+            'JWT-auth' // This name here is important for matching up with @ApiBearerAuth() in the controller!
+        );
+
+    const swagger_server_url = process.env.BACKEND_URL;
+    if (swagger_server_url) {
+        config.addServer(swagger_server_url);
+    }
+    const config_document = config.build();
+
+    const document = SwaggerModule.createDocument(app, config_document);
+    SwaggerModule.setup('api-docs', app, document);
+
+    await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
