@@ -26,7 +26,12 @@ export const ERROR_MESSAGES = {
 
     // user
     USER_NOT_FOUND: 'User not found',
+    FORBIDDEN_ACTION: 'You do not have permission to perform this action',
 
+    // role
+    ROLE_NOT_FOUND: 'Role not found',
+    ROLE_ALREADY_EXISTS: 'Role name already exists',
+    
     // communication
     FAILED_TO_SEND_OTP_EMAIL: 'Failed to send OTP email',
     OTP_REQUEST_WAIT: 'Please wait a minute before requesting a new code',
@@ -64,9 +69,14 @@ export const SUCCESS_MESSAGES = {
     EMAIL_UPDATE_INITIATED: 'Email update process initiated. Check your new email for verification',
     EMAIL_UPDATED: 'Email updated successfully',
     PASSWORD_CONFIRMED: 'Password confirmed successfully',
-
+    USER_UPDATED: 'User Data Updated Succesfully',
     // OAuth completion
     BIRTH_DATE_SET: 'Birth date set successfully',
     OAUTH_USER_REGISTERED: 'OAuth user registered successfully',
     TOKEN_EXCHANGE_SUCCESS: 'Token exchanged successfully',
+    // roles
+    ROLE_CREATED: 'Role created successfully',
+    ROLE_UPDATED: 'Role updated successfully',
+    ROLE_DELETED: 'Role deleted successfully',
+
 } as const;
