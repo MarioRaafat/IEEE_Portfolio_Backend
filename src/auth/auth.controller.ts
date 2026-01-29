@@ -84,26 +84,8 @@ export class AuthController {
     return { access_token, user };
   }
 
-  // Swagger Meassages Updated
   @ApiOperation(register_swagger.operation)
-  @ApiBody({
-    type: RegisterDTO,
-    examples: {
-      default: {
-        summary: 'Register payload',
-        value: {
-          email: 'wagih123@gmail.com',
-          username: 'AhmedWaGiiH',
-          name: 'Ahmed Wagih',
-          faculty: 'Engineering',
-          university: 'Cairo University',
-          academic_year: 3,
-          password: 'StrongPassw0rd!',
-          confirmPassword: 'StrongPassw0rd!',
-        },
-      },
-    },
-  })
+  @ApiBody({ type: RegisterDTO })
   @ApiOkResponse(register_swagger.responses.success)
   @ApiConflictErrorResponse(ERROR_MESSAGES.EMAIL_ALREADY_EXISTS)
   @ApiConflictErrorResponse(ERROR_MESSAGES.USERNAME_ALREADY_TAKEN)

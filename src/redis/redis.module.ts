@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import Redis from 'ioredis';
-
-export const REDIS_CLIENT = 'REDIS_CLIENT';
+import { RedisService } from './redis.service';
+import { REDIS_CLIENT } from './redis.constants';
 
 @Module({
   providers: [
@@ -15,25 +15,43 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
             const delay = Math.min(times * 50, 2000);
             return delay;
           },
+          // Use lazyConnect so that Redis does not attempt to connect on client
+          // instantiation. We connect explicitly below and rely on retryStrategy
+          // to handle subsequent reconnection attempts without blocking module init.
+          lazyConnect: true,
         });
 
-        return new Promise((resolve, reject) => {
-          redis.on('connect', () => {
-            console.log('✓ Redis connected');
-            resolve(redis);
-          });
-
-          redis.on('error', (err) => {
-            console.error('✗ Redis connection error:', err.message);
-            reject(err);
-          });
-
-          // Timeout after 5 seconds
-          setTimeout(() => reject(new Error('Redis connection timeout')), 5000);
+        redis.on('connect', () => {
+          console.log('✓ Redis connected');
         });
+
+        redis.on('error', (err) => {
+          console.error('✗ Redis connection error:', err.message);
+        });
+
+        redis.on('reconnecting', () => {
+          console.log('↻ Redis reconnecting...');
+        });
+
+        try {
+          await redis.connect();
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          const stack = err instanceof Error ? err.stack : undefined;
+          console.error(
+            `✗ Initial Redis connection failed: ${message}. Retrying with configured strategy (backoff up to 2000ms).`,
+          );
+          if (stack) {
+            console.error(stack);
+          }
+          // Return instance anyway - retryStrategy will handle reconnection
+        }
+
+        return redis;
       },
     },
+    RedisService,
   ],
-  exports: [REDIS_CLIENT],
+  exports: [REDIS_CLIENT, RedisService],
 })
 export class RedisModule {}

@@ -1,9 +1,6 @@
 import {
   BadRequestException,
-  ForbiddenException,
-  Inject,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -15,17 +12,26 @@ import * as crypto from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { UsersRepository } from 'src/users/users.repository';
 import { User } from 'src/users/entities/user.entity';
-import { REDIS_CLIENT } from 'src/redis/redis.module';
-import Redis from 'ioredis';
+import { RedisService } from 'src/redis/redis.service';
 import { RolesService } from 'src/roles/roles.service';
 import { RoleName } from 'src/roles/entities/role.entity';
 
 @Injectable()
 export class AuthService {
+  private readonly REDIS_REFRESH_TOKEN_PREFIX =
+    process.env.REDIS_REFRESH_TOKEN_PREFIX ?? 'refresh_token';
+  private readonly REDIS_OTP_PREFIX = process.env.REDIS_OTP_PREFIX ?? 'otp';
+  private readonly REFRESH_TOKEN_TTL = Number(
+    process.env.REDIS_REFRESH_TOKEN_TTL_SECONDS ?? 7 * 24 * 60 * 60,
+  );
+  private readonly OTP_TTL = Number(
+    process.env.REDIS_OTP_TTL_SECONDS ?? 10 * 60,
+  );
+
   constructor(
     private readonly user_repository: UsersRepository,
     private readonly jwt_service: JwtService,
-    @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    private readonly redisService: RedisService,
     private readonly roles_service: RolesService,
   ) {}
 
@@ -56,11 +62,10 @@ export class AuthService {
         '7d') as StringValue,
     });
 
-    // Store refresh token in Redis with expiration (7 days)
-    const refreshTokenExpiry = 7 * 24 * 60 * 60; // 7 days in seconds
-    await this.redis.setex(
-      `refresh_token:${user_id}:${jti}`,
-      refreshTokenExpiry,
+    // Store refresh token in Redis with configured TTL
+    await this.redisService.setex(
+      `${this.REDIS_REFRESH_TOKEN_PREFIX}:${user_id}:${jti}`,
+      this.REFRESH_TOKEN_TTL,
       refresh_token,
     );
 
@@ -192,7 +197,9 @@ export class AuthService {
     }
 
     if (payload?.id && payload?.jti) {
-      await this.redis.del(`refresh_token:${payload.id}:${payload.jti}`);
+      await this.redisService.del(
+        `${this.REDIS_REFRESH_TOKEN_PREFIX}:${payload.id}:${payload.jti}`,
+      );
     }
 
     return { success: true };
@@ -209,15 +216,14 @@ export class AuthService {
     const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 10);
     const otpHash = await bcrypt.hash(otp, saltRounds);
 
-    // Store OTP in Redis with 10 minutes expiration
-    const otpExpiry = 10 * 60; // 10 minutes in seconds
-    const otpData = JSON.stringify({
-      userId: user.id,
-      otpHash: otpHash,
-      expiresAt: Date.now() + otpExpiry * 1000,
-    });
+    // Store OTP in Redis with configured TTL
+    const otpData = JSON.stringify({ otpHash: otpHash, userId: user.id });
 
-    await this.redis.setex(`otp:${user.id}`, otpExpiry, otpData);
+    await this.redisService.setex(
+      `${this.REDIS_OTP_PREFIX}:${user.id}`,
+      this.OTP_TTL,
+      otpData,
+    );
 
     // TODO: nodemailer service so that we can send OTP emails
     // For now, just a console log
@@ -233,17 +239,14 @@ export class AuthService {
     }
 
     // Retrieve OTP record from Redis
-    const otpDataString = await this.redis.get(`otp:${user.id}`);
+    const otpDataString = await this.redisService.get(
+      `${this.REDIS_OTP_PREFIX}:${user.id}`,
+    );
     if (!otpDataString) {
       throw new BadRequestException(ERROR_MESSAGES.INVALID_OR_EXPIRED_TOKEN);
     }
 
     const otpRecord = JSON.parse(otpDataString);
-
-    if (Date.now() > otpRecord.expiresAt) {
-      await this.redis.del(`otp:${user.id}`);
-      throw new BadRequestException(ERROR_MESSAGES.INVALID_OR_EXPIRED_TOKEN);
-    }
 
     const isOtpValid = await bcrypt.compare(otp, otpRecord.otpHash);
     if (!isOtpValid) {
@@ -251,7 +254,7 @@ export class AuthService {
     }
 
     // Delete OTP from Redis after successful verification
-    await this.redis.del(`otp:${user.id}`);
+    await this.redisService.del(`${this.REDIS_OTP_PREFIX}:${user.id}`);
 
     await this.user_repository.update(user.id, { verified_email: true });
 
