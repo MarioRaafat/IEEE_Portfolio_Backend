@@ -22,9 +22,12 @@ const base_config: any = {
     entities: [
         // TODO:
         // add the entities here ya Ali
+        'src/users/entities/user.entity.ts',
+        'src/roles/entities/role.entity.ts',
     ],
 
     migrations: ['src/migrations/*{.ts,.js}'],
+    migrationsRun: false,
     synchronize: false,
     uuidExtension: 'pgcrypto',
 };
