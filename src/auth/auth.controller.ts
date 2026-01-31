@@ -84,7 +84,6 @@ export class AuthController {
     return { access_token, user };
   }
 
-  // Swagger Meassages Updated
   @ApiOperation(register_swagger.operation)
   @ApiBody({ type: RegisterDTO })
   @ApiOkResponse(register_swagger.responses.success)
@@ -103,8 +102,13 @@ export class AuthController {
   @ApiOkResponse(logout_swagger.responses.success)
   @ResponseMessage(SUCCESS_MESSAGES.LOGGED_OUT)
   @Post('logout')
-  async logout(@Res({ passthrough: true }) response: Response) {
-    await this.auth_service.logout();
+  async logout(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const refresh_token = request.cookies?.refresh_token;
+
+    await this.auth_service.logout(refresh_token);
 
     // Clear the refresh_token cookie
     response.clearCookie('refresh_token', {

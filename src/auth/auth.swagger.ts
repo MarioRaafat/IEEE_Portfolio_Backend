@@ -3,7 +3,11 @@ import { SUCCESS_MESSAGES } from '../constants/swagger-messages';
 const user_example = {
   id: 'd102dadc-0b17-4e83-812b-00103b606a1f',
   email: 'mariorafat10@gmail.com',
+  username: 'MarioRaafat',
   name: 'Mario Raafat',
+  faculty: 'Engineering',
+  university: 'Cairo University',
+  academic_year: 3,
   phone_number: '+201204878505',
   github_id: null,
   google_id: null,
@@ -50,7 +54,8 @@ export const login_swagger = {
 export const register_swagger = {
   operation: {
     summary: 'User registration',
-    description: 'Register a new user with email, username, and password.',
+    description:
+      'Register a new user with email, username, name, faculty, university, academic year, and password.',
   },
   responses: {
     success: {
