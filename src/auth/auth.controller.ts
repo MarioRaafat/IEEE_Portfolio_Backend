@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import type { Request, Response } from 'express';
 import {
@@ -130,7 +130,7 @@ export class AuthController {
   @ApiNotFoundErrorResponse(ERROR_MESSAGES.USER_NOT_FOUND)
   @ApiBadRequestErrorResponse(ERROR_MESSAGES.INVALID_OR_EXPIRED_TOKEN)
   @ResponseMessage(SUCCESS_MESSAGES.EMAIL_VERIFIED)
-  @Post('otp/email/verify')
+  @Patch('otp/email/verify')
   async verifyEmailOtp(@Body() verify_otp_dto: VerifyOtpDTO) {
     const result = await this.auth_service.verifyEmailVerificationOtp(
       verify_otp_dto.email,
@@ -157,7 +157,7 @@ export class AuthController {
   @ApiBadRequestErrorResponse(ERROR_MESSAGES.PASSWORD_CONFIRMATION_MISMATCH)
   @ApiBadRequestErrorResponse(ERROR_MESSAGES.NEW_PASSWORD_SAME_AS_OLD)
   @ResponseMessage(SUCCESS_MESSAGES.PASSWORD_RESET)
-  @Post('password/reset')
+  @Patch('password/reset')
   async resetPassword(@Body() reset_password_dto: ResetPasswordDTO) {
     const result = await this.auth_service.resetPasswordWithOtp(
       reset_password_dto.email,
@@ -179,7 +179,7 @@ export class AuthController {
   @ApiUnauthorizedErrorResponse(ERROR_MESSAGES.WRONG_PASSWORD)
   @ApiNotFoundErrorResponse(ERROR_MESSAGES.USER_NOT_FOUND)
   @ResponseMessage(SUCCESS_MESSAGES.PASSWORD_CHANGED)
-  @Post('password/change')
+  @Patch('password/change')
   async changePassword(
     @Body() change_password_dto: ChangePasswordDTO,
     @Req() req: Request & { user: User },
