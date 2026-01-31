@@ -31,17 +31,14 @@ async function bootstrap() {
             'IEEE Documentation presented by backend team with lots of kisses for you 😘'
         )
         .setVersion('1.0')
-        .addBearerAuth(
-            {
-                type: 'http',
-                scheme: 'bearer',
-                bearerFormat: 'JWT',
-                name: 'JWT',
-                description: 'Enter JWT token',
-                in: 'header',
-            },
-            'JWT-auth' // This name here is important for matching up with @ApiBearerAuth() in the controller!
-        );
+        .addBearerAuth({
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+            name: 'JWT',
+            description: 'Enter JWT token',
+            in: 'header',
+        });
 
     const swagger_server_url = process.env.BACKEND_URL;
     if (swagger_server_url) {

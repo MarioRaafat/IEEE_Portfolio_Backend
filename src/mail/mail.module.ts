@@ -1,14 +1,18 @@
 import { Module } from '@nestjs/common';
-import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import * as nodemailer from 'nodemailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import { MailService } from './mail.service';
 
+const MAIL_TRANSPORTER = 'MAIL_TRANSPORTER';
+
 @Module({
-  imports: [
-    MailerModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        transport: {
+  imports: [ConfigModule],
+  providers: [
+    {
+      provide: MAIL_TRANSPORTER,
+      useFactory: (config: ConfigService) => {
+        const transportOptions: SMTPTransport.Options = {
           host: config.get('GMAIL_SMTP_HOST'),
           port: config.get('GMAIL_SMTP_PORT'),
           secure: config.get<boolean>('GMAIL_SMTP_SECURE'),
@@ -16,15 +20,18 @@ import { MailService } from './mail.service';
             user: config.get('GMAIL_SMTP_LOGIN'),
             pass: config.get('GMAIL_SMTP_PASSWORD'),
           },
-        },
-        defaults: {
+        };
+
+        const defaults = {
           from: `"${config.get('GMAIL_EMAIL_FROM_NAME')}" <${config.get('GMAIL_EMAIL_FROM_ADDRESS')}>`,
-        },
-      }),
+        };
+
+        return nodemailer.createTransport(transportOptions, defaults);
+      },
       inject: [ConfigService],
-    }),
+    },
+    MailService,
   ],
-  providers: [MailService],
   exports: [MailService],
 })
 export class MailModule {}
