@@ -312,7 +312,7 @@ export class AuthService {
     return this.verifyOtp(user.email, otp, AuthOtpPurpose.EmailVerification);
   }
 
-  async generatePasswordResetOtp(email: string): Promise<{ success: boolean }> {
+  async sendPasswordResetOtp(email: string): Promise<{ success: boolean }> {
     return this.generateOtp(email, AuthOtpPurpose.PasswordReset);
   }
 

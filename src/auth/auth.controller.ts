@@ -128,9 +128,7 @@ export class AuthController {
   @ResponseMessage(SUCCESS_MESSAGES.OTP_GENERATED)
   @Post('otp/email/send')
   async sendEmailOtp(@Req() req: Request & { user: User }) {
-    const result = await this.auth_service.sendEmailOtpForUser(
-      req.user.id,
-    );
+    const result = await this.auth_service.sendEmailOtpForUser(req.user.id);
     return result;
   }
 
@@ -162,7 +160,10 @@ export class AuthController {
   @ResponseMessage(SUCCESS_MESSAGES.PASSWORD_RESET_OTP_SENT)
   @Post('otp/password/send')
   async sendPasswordResetOtp(@Body() generate_otp_dto: GenerateOtpDTO) {
-    return this.auth_service.generatePasswordResetOtp(generate_otp_dto.email);
+    const result = await this.auth_service.sendPasswordResetOtp(
+      generate_otp_dto.email,
+    );
+    return result;
   }
 
   @ApiOperation(reset_password_swagger.operation)
@@ -175,11 +176,15 @@ export class AuthController {
   @ResponseMessage(SUCCESS_MESSAGES.PASSWORD_RESET)
   @Patch('password/reset')
   async resetPassword(@Body() reset_password_dto: ResetPasswordDTO) {
+    const email = String(reset_password_dto.email);
+    const otp = String(reset_password_dto.otp);
+    const password = String(reset_password_dto.password);
+    const confirmPassword = String(reset_password_dto.confirmPassword);
     const result = await this.auth_service.resetPasswordWithOtp(
-      reset_password_dto.email,
-      reset_password_dto.otp,
-      reset_password_dto.password,
-      reset_password_dto.confirmPassword,
+      email,
+      otp,
+      password,
+      confirmPassword,
     );
     return result;
   }
@@ -200,11 +205,14 @@ export class AuthController {
     @Body() change_password_dto: ChangePasswordDTO,
     @Req() req: Request & { user: User },
   ) {
+    const currentPassword = String(change_password_dto.currentPassword);
+    const password = String(change_password_dto.password);
+    const confirmPassword = String(change_password_dto.confirmPassword);
     return this.auth_service.changePassword(
       req.user.id,
-      change_password_dto.currentPassword,
-      change_password_dto.password,
-      change_password_dto.confirmPassword,
+      currentPassword,
+      password,
+      confirmPassword,
     );
   }
 }
