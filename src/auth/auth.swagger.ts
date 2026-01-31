@@ -131,3 +131,98 @@ export const verify_otp_swagger = {
     },
   },
 };
+
+export const send_email_otp_swagger = {
+  operation: {
+    summary: 'Send email verification OTP',
+    description: 'Send OTP code to verify user email address.',
+  },
+  responses: {
+    success: {
+      description: 'OTP generated and sent successfully',
+      schema: {
+        example: {
+          data: {},
+          count: 0,
+          message: SUCCESS_MESSAGES.OTP_GENERATED,
+        },
+      },
+    },
+  },
+};
+
+export const verify_email_otp_swagger = {
+  operation: {
+    summary: 'Verify email OTP',
+    description: 'Verify OTP code to confirm email address.',
+  },
+  responses: {
+    success: {
+      description: 'Email verified successfully',
+      schema: {
+        example: {
+          data: {},
+          count: 0,
+          message: SUCCESS_MESSAGES.EMAIL_VERIFIED,
+        },
+      },
+    },
+  },
+};
+
+export const send_password_reset_otp_swagger = {
+  operation: {
+    summary: 'Send password reset OTP',
+    description: 'Send OTP code for password reset.',
+  },
+  responses: {
+    success: {
+      description: 'Password reset OTP sent successfully',
+      schema: {
+        example: {
+          data: {},
+          count: 0,
+          message: SUCCESS_MESSAGES.PASSWORD_RESET_OTP_SENT,
+        },
+      },
+    },
+  },
+};
+
+export const reset_password_swagger = {
+  operation: {
+    summary: 'Reset password with OTP',
+    description: 'Verify OTP and reset the user password.',
+  },
+  responses: {
+    success: {
+      description: 'Password reset successfully',
+      schema: {
+        example: {
+          data: {},
+          count: 0,
+          message: SUCCESS_MESSAGES.PASSWORD_RESET,
+        },
+      },
+    },
+  },
+};
+
+export const change_password_swagger = {
+  operation: {
+    summary: 'Change password',
+    description: 'Change the current user password using the old password.',
+  },
+  responses: {
+    success: {
+      description: 'Password changed successfully',
+      schema: {
+        example: {
+          data: {},
+          count: 0,
+          message: SUCCESS_MESSAGES.PASSWORD_CHANGED,
+        },
+      },
+    },
+  },
+};

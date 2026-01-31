@@ -33,4 +33,51 @@ export class RedisService {
   async ttl(key: string): Promise<number> {
     return this.client.ttl(key);
   }
+
+  async sadd(key: string, ...members: string[]): Promise<number> {
+    return this.client.sadd(key, ...members);
+  }
+
+  async srem(key: string, ...members: string[]): Promise<number> {
+    return this.client.srem(key, ...members);
+  }
+
+  async smembers(key: string): Promise<string[]> {
+    return this.client.smembers(key);
+  }
+
+  async deleteKeys(keys: string[]): Promise<number> {
+    if (keys.length === 0) {
+      return 0;
+    }
+
+    if (typeof this.client.unlink === 'function') {
+      return this.client.unlink(...keys);
+    }
+
+    return this.client.del(...keys);
+  }
+
+  async delByPattern(pattern: string): Promise<number> {
+    let cursor = '0';
+    let deleted = 0;
+
+    do {
+      const [nextCursor, keys] = await this.client.scan(
+        cursor,
+        'MATCH',
+        pattern,
+        'COUNT',
+        1000,
+      );
+
+      cursor = nextCursor;
+
+      if (keys.length > 0) {
+        deleted += await this.client.del(...keys);
+      }
+    } while (cursor !== '0');
+
+    return deleted;
+  }
 }

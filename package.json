@@ -26,14 +26,13 @@
     "migration:show": "typeorm-ts-node-commonjs -d src/databases/data-source.ts migration:show"
   },
   "dependencies": {
-    "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.1",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
-    "@nestjs/swagger": "^11.2.3",
+    "@nestjs/swagger": "^11.2.5",
     "@nestjs/typeorm": "^11.0.0",
     "@types/bcrypt": "^6.0.0",
     "bcrypt": "^6.0.0",
@@ -41,6 +40,7 @@
     "class-validator": "^0.14.3",
     "cookie-parser": "^1.4.7",
     "ioredis": "^5.9.2",
+    "nodemailer": "^7.0.13",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.16.3",
@@ -58,6 +58,7 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
+    "@types/nodemailer": "^7.0.9",
     "@types/passport-jwt": "^4.0.1",
     "@types/pg": "^8.15.6",
     "@types/supertest": "^6.0.2",
@@ -75,6 +76,11 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
+  },
+  "overrides": {
+    "glob": "^11.0.0",
+    "lodash": "^4.17.21",
+    "html-minifier": "4.0.0"
   },
   "jest": {
     "moduleFileExtensions": [

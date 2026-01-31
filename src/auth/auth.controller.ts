@@ -1,12 +1,8 @@
 import {
-  BadRequestException,
   Body,
   Controller,
-  Get,
-  InternalServerErrorException,
-  Param,
+  Patch,
   Post,
-  Query,
   Req,
   Res,
   UseGuards,
@@ -16,13 +12,8 @@ import type { Request, Response } from 'express';
 import {
   ApiBearerAuth,
   ApiBody,
-  ApiCookieAuth,
-  ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiParam,
-  ApiQuery,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import {
@@ -32,7 +23,6 @@ import {
   ApiInternalServerError,
   ApiNotFoundErrorResponse,
   ApiUnauthorizedErrorResponse,
-  ApiUnprocessableEntityErrorResponse,
 } from 'src/decorators/swagger-error-responses.decorator';
 import {
   ERROR_MESSAGES,
@@ -42,12 +32,18 @@ import {
   login_swagger,
   logout_swagger,
   register_swagger,
-  generate_otp_swagger,
-  verify_otp_swagger,
+  send_email_otp_swagger,
+  verify_email_otp_swagger,
+  send_password_reset_otp_swagger,
+  reset_password_swagger,
+  change_password_swagger,
 } from './auth.swagger';
 import { LoginDTO, RegisterDTO, GenerateOtpDTO, VerifyOtpDTO } from './dto';
+import { ResetPasswordDTO } from './dto/reset-password.dto';
+import { ChangePasswordDTO } from './dto/change-password.dto';
 import { ResponseMessage } from 'src/decorators/response-message.decorator';
-import { register } from 'module';
+import { AuthGuard } from '@nestjs/passport';
+import { User } from 'src/users/entities/user.entity';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -100,6 +96,9 @@ export class AuthController {
 
   @ApiOperation(logout_swagger.operation)
   @ApiOkResponse(logout_swagger.responses.success)
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiUnauthorizedErrorResponse(ERROR_MESSAGES.INVALID_OR_EXPIRED_TOKEN)
   @ResponseMessage(SUCCESS_MESSAGES.LOGGED_OUT)
   @Post('logout')
   async logout(
@@ -108,7 +107,7 @@ export class AuthController {
   ) {
     const refresh_token = request.cookies?.refresh_token;
 
-    await this.auth_service.logout(refresh_token);
+    const result = await this.auth_service.logout(refresh_token);
 
     // Clear the refresh_token cookie
     response.clearCookie('refresh_token', {
@@ -117,29 +116,103 @@ export class AuthController {
       sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'none',
     });
 
-    return {};
+    return result;
   }
 
-  @ApiOperation(generate_otp_swagger.operation)
-  @ApiBody({ type: GenerateOtpDTO })
-  @ApiOkResponse(generate_otp_swagger.responses.success)
+  @ApiOperation(send_email_otp_swagger.operation)
+  @ApiOkResponse(send_email_otp_swagger.responses.success)
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiUnauthorizedErrorResponse(ERROR_MESSAGES.INVALID_OR_EXPIRED_TOKEN)
   @ApiNotFoundErrorResponse(ERROR_MESSAGES.USER_NOT_FOUND)
   @ResponseMessage(SUCCESS_MESSAGES.OTP_GENERATED)
-  @Post('otp/generate')
-  async generateOtp(@Body() generate_otp_dto: GenerateOtpDTO) {
-    await this.auth_service.generateOtp(generate_otp_dto.email);
-    return {};
+  @Post('otp/email/send')
+  async sendEmailOtp(@Req() req: Request & { user: User }) {
+    const result = await this.auth_service.sendEmailOtpForUser(req.user.id);
+    return result;
   }
 
-  @ApiOperation(verify_otp_swagger.operation)
+  @ApiOperation(verify_email_otp_swagger.operation)
   @ApiBody({ type: VerifyOtpDTO })
-  @ApiOkResponse(verify_otp_swagger.responses.success)
+  @ApiOkResponse(verify_email_otp_swagger.responses.success)
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiUnauthorizedErrorResponse(ERROR_MESSAGES.INVALID_OR_EXPIRED_TOKEN)
   @ApiNotFoundErrorResponse(ERROR_MESSAGES.USER_NOT_FOUND)
   @ApiBadRequestErrorResponse(ERROR_MESSAGES.INVALID_OR_EXPIRED_TOKEN)
-  @ResponseMessage(SUCCESS_MESSAGES.OTP_VERIFIED)
-  @Post('otp/verify')
-  async verifyOtp(@Body() verify_otp_dto: VerifyOtpDTO) {
-    await this.auth_service.verifyOtp(verify_otp_dto.email, verify_otp_dto.otp);
-    return {};
+  @ResponseMessage(SUCCESS_MESSAGES.EMAIL_VERIFIED)
+  @Patch('otp/email/verify')
+  async verifyEmailOtp(
+    @Body() verify_otp_dto: VerifyOtpDTO,
+    @Req() req: Request & { user: User },
+  ) {
+    const result = await this.auth_service.verifyEmailOtpForUser(
+      req.user.id,
+      verify_otp_dto.otp,
+    );
+    return result;
+  }
+
+  @ApiOperation(send_password_reset_otp_swagger.operation)
+  @ApiBody({ type: GenerateOtpDTO })
+  @ApiOkResponse(send_password_reset_otp_swagger.responses.success)
+  @ApiNotFoundErrorResponse(ERROR_MESSAGES.USER_NOT_FOUND)
+  @ResponseMessage(SUCCESS_MESSAGES.PASSWORD_RESET_OTP_SENT)
+  @Post('otp/password/send')
+  async sendPasswordResetOtp(@Body() generate_otp_dto: GenerateOtpDTO) {
+    const result = await this.auth_service.sendPasswordResetOtp(
+      generate_otp_dto.email,
+    );
+    return result;
+  }
+
+  @ApiOperation(reset_password_swagger.operation)
+  @ApiBody({ type: ResetPasswordDTO })
+  @ApiOkResponse(reset_password_swagger.responses.success)
+  @ApiNotFoundErrorResponse(ERROR_MESSAGES.USER_NOT_FOUND)
+  @ApiBadRequestErrorResponse(ERROR_MESSAGES.INVALID_OR_EXPIRED_TOKEN)
+  @ApiBadRequestErrorResponse(ERROR_MESSAGES.PASSWORD_CONFIRMATION_MISMATCH)
+  @ApiBadRequestErrorResponse(ERROR_MESSAGES.NEW_PASSWORD_SAME_AS_OLD)
+  @ResponseMessage(SUCCESS_MESSAGES.PASSWORD_RESET)
+  @Patch('password/reset')
+  async resetPassword(@Body() reset_password_dto: ResetPasswordDTO) {
+    const email = String(reset_password_dto.email);
+    const otp = String(reset_password_dto.otp);
+    const password = String(reset_password_dto.password);
+    const confirmPassword = String(reset_password_dto.confirmPassword);
+    const result = await this.auth_service.resetPasswordWithOtp(
+      email,
+      otp,
+      password,
+      confirmPassword,
+    );
+    return result;
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation(change_password_swagger.operation)
+  @ApiBody({ type: ChangePasswordDTO })
+  @ApiOkResponse(change_password_swagger.responses.success)
+  @ApiUnauthorizedErrorResponse(ERROR_MESSAGES.INVALID_OR_EXPIRED_TOKEN)
+  @ApiBadRequestErrorResponse(ERROR_MESSAGES.PASSWORD_CONFIRMATION_MISMATCH)
+  @ApiBadRequestErrorResponse(ERROR_MESSAGES.NEW_PASSWORD_SAME_AS_OLD)
+  @ApiUnauthorizedErrorResponse(ERROR_MESSAGES.WRONG_PASSWORD)
+  @ApiNotFoundErrorResponse(ERROR_MESSAGES.USER_NOT_FOUND)
+  @ResponseMessage(SUCCESS_MESSAGES.PASSWORD_CHANGED)
+  @Patch('password/change')
+  async changePassword(
+    @Body() change_password_dto: ChangePasswordDTO,
+    @Req() req: Request & { user: User },
+  ) {
+    const currentPassword = String(change_password_dto.currentPassword);
+    const password = String(change_password_dto.password);
+    const confirmPassword = String(change_password_dto.confirmPassword);
+    return this.auth_service.changePassword(
+      req.user.id,
+      currentPassword,
+      password,
+      confirmPassword,
+    );
   }
 }
