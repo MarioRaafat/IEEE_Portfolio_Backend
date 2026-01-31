@@ -7,7 +7,6 @@ export function buildEmailVerificationHtml(params: {
   const resolvedLogoUrl =
     logoUrl ||
     'https://via.placeholder.com/150x50/ffffff/00629B?text=IEEE+CUSB';
-  console.log('Resolved Logo URL:', resolvedLogoUrl);
   return `<!DOCTYPE html>
 <html>
 <head>

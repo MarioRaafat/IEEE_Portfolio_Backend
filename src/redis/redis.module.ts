@@ -30,7 +30,6 @@ import { REDIS_CLIENT } from './redis.constants';
 
         redis.on('connect', () => {
           logger.log('Redis connected successfully');
-          console.log('Redis connected successfully');
         });
 
         redis.on('ready', () => {
