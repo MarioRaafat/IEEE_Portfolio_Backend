@@ -1,13 +1,10 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { LoginDTO, RegisterDTO } from './dto';
-import { OtpRecord } from './interfaces/otpRecord.interface';
 import { ERROR_MESSAGES } from 'src/constants/swagger-messages';
 import * as bcrypt from 'bcrypt';
 import { StringValue } from 'ms';
@@ -15,17 +12,28 @@ import * as crypto from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { UsersRepository } from 'src/users/users.repository';
 import { User } from 'src/users/entities/user.entity';
+import { RedisService } from 'src/redis/redis.service';
+import { RolesService } from 'src/roles/roles.service';
+import { RoleName } from 'src/roles/entities/role.entity';
 
 @Injectable()
 export class AuthService {
+  private readonly REDIS_REFRESH_TOKEN_PREFIX =
+    process.env.REDIS_REFRESH_TOKEN_PREFIX ?? 'refresh_token';
+  private readonly REDIS_OTP_PREFIX = process.env.REDIS_OTP_PREFIX ?? 'otp';
+  private readonly REFRESH_TOKEN_TTL = Number(
+    process.env.REDIS_REFRESH_TOKEN_TTL_SECONDS ?? 7 * 24 * 60 * 60,
+  );
+  private readonly OTP_TTL = Number(
+    process.env.REDIS_OTP_TTL_SECONDS ?? 10 * 60,
+  );
+
   constructor(
     private readonly user_repository: UsersRepository,
     private readonly jwt_service: JwtService,
-    // private readonly redis_service: RedisService,
+    private readonly redisService: RedisService,
+    private readonly roles_service: RolesService,
   ) {}
-
-  // OTP Records Storage for now till we implement Redis
-  otpRecords: OtpRecord[] = [];
 
   // Private Helper Method to generate OTP
   private generateNumericOtp(length: number = 6): string {
@@ -40,20 +48,26 @@ export class AuthService {
     const access_token = this.jwt_service.sign(
       { id: user_id },
       {
-        secret: process.env.JWT_TOKEN_SECRET ?? 'fallback-secret', // Optional: Add fallback for safety
+        secret: process.env.JWT_TOKEN_SECRET ?? 'fallback-secret',
         expiresIn: (process.env.JWT_TOKEN_EXPIRATION_TIME ??
           '1h') as StringValue,
       },
     );
 
-    const refresh_payload = { id: user_id, jti: crypto.randomUUID() };
+    const jti = crypto.randomUUID();
+    const refresh_payload = { id: user_id, jti };
     const refresh_token = this.jwt_service.sign(refresh_payload, {
       secret: process.env.JWT_REFRESH_SECRET ?? 'fallback-refresh-secret',
       expiresIn: (process.env.JWT_REFRESH_EXPIRATION_TIME ??
         '7d') as StringValue,
     });
 
-    // TODO: store refresh token in redis
+    // Store refresh token in Redis with configured TTL
+    await this.redisService.setex(
+      `${this.REDIS_REFRESH_TOKEN_PREFIX}:${user_id}:${jti}`,
+      this.REFRESH_TOKEN_TTL,
+      refresh_token,
+    );
 
     return {
       access_token: access_token,
@@ -62,7 +76,7 @@ export class AuthService {
   }
 
   async validateUserPassword(id: string, password: string): Promise<User> {
-    const user = await this.user_repository.findById(id);
+    const user = await this.user_repository.findByIdWithPassword(id);
 
     if (!user) {
       throw new NotFoundException(ERROR_MESSAGES.USER_NOT_FOUND);
@@ -120,7 +134,16 @@ export class AuthService {
   }
 
   async register(register_dto: RegisterDTO): Promise<User> {
-    const { email, username, password, confirmPassword } = register_dto as any;
+    const {
+      email,
+      username,
+      password,
+      confirmPassword,
+      name,
+      faculty,
+      university,
+      academic_year,
+    } = register_dto as any;
 
     if (password !== confirmPassword) {
       throw new BadRequestException(
@@ -141,10 +164,17 @@ export class AuthService {
     const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 10);
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
+    const visitorRole = await this.roles_service.findByName(RoleName.VISITOR);
+
     const newUser = await this.user_repository.create({
       email,
       username,
+      name,
       password: passwordHash,
+      role_id: visitorRole.id,
+      faculty,
+      university,
+      academic_year,
       verified_email: false,
       // Add other required fields with defaults as needed
     });
@@ -152,9 +182,25 @@ export class AuthService {
     return newUser;
   }
 
-  async logout() {
-    // TODO: When we add Redis, delete the refresh token for this userId here.
-    // await this.redis_service.del(`refresh_token:${userId}`);
+  async logout(refresh_token?: string) {
+    if (!refresh_token) {
+      return { success: true };
+    }
+
+    let payload: { id?: string; jti?: string } | null = null;
+    try {
+      payload = this.jwt_service.verify(refresh_token, {
+        secret: process.env.JWT_REFRESH_SECRET ?? 'fallback-refresh-secret',
+      });
+    } catch {
+      throw new UnauthorizedException(ERROR_MESSAGES.INVALID_OR_EXPIRED_TOKEN);
+    }
+
+    if (payload?.id && payload?.jti) {
+      await this.redisService.del(
+        `${this.REDIS_REFRESH_TOKEN_PREFIX}:${payload.id}:${payload.jti}`,
+      );
+    }
 
     return { success: true };
   }
@@ -170,19 +216,14 @@ export class AuthService {
     const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 10);
     const otpHash = await bcrypt.hash(otp, saltRounds);
 
-    const expiresAt = Date.now() + 10 * 60 * 1000;
+    // Store OTP in Redis with configured TTL
+    const otpData = JSON.stringify({ otpHash: otpHash, userId: user.id });
 
-    const otpRecord: OtpRecord = {
-      userId: user.id,
-      otpHash: otpHash,
-      expiresAt: expiresAt,
-    };
-
-    // Remove any existing OTP for this user
-    this.otpRecords = this.otpRecords.filter((r) => r.userId !== user.id);
-
-    // Add new OTP record
-    this.otpRecords.push(otpRecord);
+    await this.redisService.setex(
+      `${this.REDIS_OTP_PREFIX}:${user.id}`,
+      this.OTP_TTL,
+      otpData,
+    );
 
     // TODO: nodemailer service so that we can send OTP emails
     // For now, just a console log
@@ -197,22 +238,23 @@ export class AuthService {
       throw new NotFoundException(ERROR_MESSAGES.USER_NOT_FOUND);
     }
 
-    const otpRecord = this.otpRecords.find((r) => r.userId === user.id);
-    if (!otpRecord) {
+    // Retrieve OTP record from Redis
+    const otpDataString = await this.redisService.get(
+      `${this.REDIS_OTP_PREFIX}:${user.id}`,
+    );
+    if (!otpDataString) {
       throw new BadRequestException(ERROR_MESSAGES.INVALID_OR_EXPIRED_TOKEN);
     }
 
-    if (Date.now() > otpRecord.expiresAt) {
-      this.otpRecords = this.otpRecords.filter((r) => r.userId !== user.id);
-      throw new BadRequestException(ERROR_MESSAGES.INVALID_OR_EXPIRED_TOKEN);
-    }
+    const otpRecord = JSON.parse(otpDataString);
 
     const isOtpValid = await bcrypt.compare(otp, otpRecord.otpHash);
     if (!isOtpValid) {
       throw new BadRequestException(ERROR_MESSAGES.INVALID_OR_EXPIRED_TOKEN);
     }
 
-    this.otpRecords = this.otpRecords.filter((r) => r.userId !== user.id);
+    // Delete OTP from Redis after successful verification
+    await this.redisService.del(`${this.REDIS_OTP_PREFIX}:${user.id}`);
 
     await this.user_repository.update(user.id, { verified_email: true });
 

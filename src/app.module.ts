@@ -6,19 +6,21 @@ import { ConfigModule } from '@nestjs/config';
 import { PostgreSQLModule } from './databases/postgresql.module';
 import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
-    imports: [
-        ConfigModule.forRoot({
-            isGlobal: true,
-            envFilePath: 'config/.env',
-        }),
-        PostgreSQLModule,
-        AuthModule,
-        UsersModule,
-        RolesModule
-    ],
-    controllers: [AppController],
-    providers: [AppService],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: 'config/.env',
+    }),
+    PostgreSQLModule,
+    AuthModule,
+    UsersModule,
+    RolesModule,
+    RedisModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}

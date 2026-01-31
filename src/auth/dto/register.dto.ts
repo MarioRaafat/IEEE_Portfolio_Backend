@@ -1,9 +1,12 @@
 import {
   IsEmail,
+  IsInt,
   IsNotEmpty,
   IsString,
+  Max,
   MaxLength,
   MinLength,
+  Min,
   Matches,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
@@ -21,6 +24,35 @@ export class RegisterDTO {
   @IsNotEmpty()
   @MaxLength(STRING_MAX_LENGTH)
   username: string;
+
+  @ApiProperty({ description: 'Full name', example: 'Ahmed Wagih' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(STRING_MAX_LENGTH)
+  name: string;
+
+  @ApiProperty({ description: 'Faculty', example: 'Engineering' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(STRING_MAX_LENGTH)
+  faculty: string;
+
+  @ApiProperty({ description: 'University', example: 'Cairo University' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(STRING_MAX_LENGTH)
+  university: string;
+
+  @ApiProperty({
+    description: 'Academic year',
+    example: 3,
+    minimum: 1,
+    maximum: 10,
+  })
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  academic_year: number;
 
   @ApiProperty({
     description: 'Password',
