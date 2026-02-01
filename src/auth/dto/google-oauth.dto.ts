@@ -9,7 +9,7 @@ export class GoogleOAuthDto {
 
   @IsOptional()
   @IsString()
-  picture?: string;
+  avatar_url?: string;
 
   @IsString()
   google_id: string;

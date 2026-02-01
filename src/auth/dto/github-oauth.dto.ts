@@ -9,7 +9,7 @@ export class GithubOAuthDto {
 
   @IsOptional()
   @IsString()
-  picture?: string;
+  avatar_url?: string;
 
   @IsString()
   github_id: string;
