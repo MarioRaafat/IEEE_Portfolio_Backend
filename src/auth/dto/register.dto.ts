@@ -2,6 +2,7 @@ import {
   IsEmail,
   IsInt,
   IsNotEmpty,
+  IsPhoneNumber,
   IsString,
   Max,
   MaxLength,
@@ -30,6 +31,15 @@ export class RegisterDTO {
   @IsNotEmpty()
   @MaxLength(STRING_MAX_LENGTH)
   name: string;
+
+  @ApiProperty({
+    description: 'Phone number',
+    example: '+20-100-123-4567',
+  })
+  @IsString()
+  @IsNotEmpty()
+  @IsPhoneNumber('ZZ', { message: 'Phone number must be valid' })
+  phone: string;
 
   @ApiProperty({ description: 'Faculty', example: 'Engineering' })
   @IsString()

@@ -3,6 +3,7 @@ import {
   IsInt,
   IsNotEmpty,
   IsOptional,
+  IsPhoneNumber,
   IsString,
   Matches,
   Max,
@@ -91,11 +92,11 @@ export class CreateUserDto {
   @ApiProperty({
     description: 'Phone number of the user',
     example: '+20-100-123-4567',
-    required: false,
   })
   @IsString()
-  @IsOptional()
-  phone?: string;
+  @IsNotEmpty()
+  @IsPhoneNumber('ZZ', { message: 'Phone number must be valid' })
+  phone: string;
 
   @ApiProperty({
     description: 'Faculty or school name',

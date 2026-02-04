@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsNumber, IsString, Min, Max } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsPhoneNumber,
+  IsString,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class CompleteOAuthProfileDto {
   @IsNotEmpty()
@@ -8,6 +15,11 @@ export class CompleteOAuthProfileDto {
   @IsNotEmpty()
   @IsString()
   university: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @IsPhoneNumber('ZZ', { message: 'Phone number must be valid' })
+  phone: string;
 
   @IsNotEmpty()
   @IsNumber()

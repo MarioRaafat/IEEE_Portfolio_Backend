@@ -179,6 +179,7 @@ export class AuthService {
       password,
       confirmPassword,
       name,
+      phone,
       faculty,
       university,
       academic_year,
@@ -209,6 +210,7 @@ export class AuthService {
       email,
       username,
       name,
+      phone,
       password: passwordHash,
       role_id: visitorRole.id,
       faculty,
@@ -589,6 +591,7 @@ export class AuthService {
       faculty: completeProfileDto.faculty,
       university: completeProfileDto.university,
       academic_year: completeProfileDto.academic_year,
+      phone: completeProfileDto.phone,
       ...(completeProfileDto.username && {
         username: completeProfileDto.username,
       }),
