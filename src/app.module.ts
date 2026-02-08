@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
 import { MailModule } from './mail/mail.module';
 import { RedisModule } from './redis/redis.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -20,7 +21,8 @@ import { RedisModule } from './redis/redis.module';
     UsersModule,
     RolesModule,
     MailModule,
-    RedisModule
+    RedisModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

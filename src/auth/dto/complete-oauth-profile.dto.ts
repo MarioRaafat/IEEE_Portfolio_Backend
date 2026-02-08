@@ -18,7 +18,7 @@ export class CompleteOAuthProfileDto {
 
   @IsNotEmpty()
   @IsString()
-  @IsPhoneNumber('ZZ', { message: 'Phone number must be valid' })
+  @IsPhoneNumber(undefined, { message: 'Phone number must be valid' })
   phone: string;
 
   @IsNotEmpty()

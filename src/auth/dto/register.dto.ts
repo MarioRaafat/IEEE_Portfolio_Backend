@@ -38,7 +38,7 @@ export class RegisterDTO {
   })
   @IsString()
   @IsNotEmpty()
-  @IsPhoneNumber('ZZ', { message: 'Phone number must be valid' })
+  @IsPhoneNumber(undefined, { message: 'Phone number must be valid' })
   phone: string;
 
   @ApiProperty({ description: 'Faculty', example: 'Engineering' })

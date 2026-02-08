@@ -95,7 +95,7 @@ export class CreateUserDto {
   })
   @IsString()
   @IsNotEmpty()
-  @IsPhoneNumber('ZZ', { message: 'Phone number must be valid' })
+  @IsPhoneNumber(undefined, { message: 'Phone number must be valid' })
   phone: string;
 
   @ApiProperty({
